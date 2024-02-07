@@ -13,7 +13,7 @@ join_field_join = 'NAMEUNIT'
 
 # Specify the field to calculate and the field from which to get the calculation values
 field_to_calculate = 'cod_prov'  # Field in target_table to be calculated
-calculation_field = f'{join_table}.{join_field_join}'  # Field in join_table used for calculation
+calculation_field = f'{join_table}.nombreCampoCalculo'  # Field in join_table used for calculation
 
 # Join the tables
 arcpy.AddJoin_management(target_table, join_field_target, join_table, join_field_join, 'KEEP_COMMON')
