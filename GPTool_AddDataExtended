@@ -1,0 +1,55 @@
+import arcpy
+import os
+import zipfile
+import tempfile
+
+def unzip_shapefile(zip_path, extract_path):
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_path)
+    for file in os.listdir(extract_path):
+        if file.endswith(".shp"):
+            return os.path.join(extract_path, file)
+    arcpy.AddError("No se encontró un archivo .shp en el ZIP.")
+    return None
+
+def convert_to_feature_set(input_file):
+    # Crear un directorio temporal para descomprimir si es necesario
+    temp_dir = tempfile.mkdtemp()
+
+    # Determinar el tipo de archivo y realizar la conversión adecuada
+    file_extension = os.path.splitext(input_file)[1].lower()
+    temp_layer = "in_memory\\tempTable"
+
+    if file_extension in ['.csv', '.geojson', '.zip', '.gpx', '.kml']:
+        if file_extension == '.csv':
+            arcpy.TableToTable_conversion(input_file, "in_memory", "tempTable")
+            arcpy.MakeXYEventLayer_management("in_memory\\tempTable", "X", "Y", temp_layer)
+        elif file_extension == '.geojson':
+            arcpy.JSONToFeatures_conversion(input_file, temp_layer)
+        elif file_extension == '.zip':
+            # Descomprimir y encontrar el archivo .shp
+            shp_file = unzip_shapefile(input_file, temp_dir)
+            if shp_file:
+                arcpy.MakeFeatureLayer_management(shp_file, temp_layer)
+            else:
+                arcpy.AddError("Error al procesar el archivo ZIP.")
+                return
+        elif file_extension == '.gpx':
+            arcpy.GPXtoFeatures_conversion(input_file, temp_layer)
+        elif file_extension == '.kml':
+            arcpy.KMLToLayer_conversion(input_file, "in_memory")
+
+        #arcpy.Exists(temp_layer)
+
+        # Crear un FeatureSet y cargar la capa
+        feature_set = arcpy.FeatureSet()
+        feature_set.load(temp_layer)
+
+        # Establecer el parámetro de salida con el FeatureSet
+        arcpy.SetParameter(1, feature_set)
+    else:
+        arcpy.AddError("Tipo de archivo no soportado.")
+
+if __name__ == "__main__":
+    input_file = arcpy.GetParameterAsText(0)  # El primer parámetro de entrada
+    convert_to_feature_set(input_file)
